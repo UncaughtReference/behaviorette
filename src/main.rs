@@ -70,11 +70,6 @@ fn run(mut terminal: DefaultTerminal, mut app_state: &mut AppState) -> EyreResul
                             app_state.block_focus = 2;
                         }
                     },
-                    event::KeyCode::Char('3') => {
-                        if key.modifiers == KeyModifiers::CONTROL {
-                            app_state.block_focus = 3;
-                        }
-                    },
                     event::KeyCode::Char('s') => {
                         if key.modifiers == KeyModifiers::CONTROL {
                             match app_state.conversion_direction {
@@ -172,8 +167,9 @@ fn run(mut terminal: DefaultTerminal, mut app_state: &mut AppState) -> EyreResul
                         app_state.binary_text_area.input(key);
                     }
                 }
-            } else if app_state.block_focus == 3 {
-                if key.kind == KeyEventKind::Press {
+            } 
+            if key.kind == KeyEventKind::Press {
+                if key.modifiers == KeyModifiers::ALT {
                     if key.code == event::KeyCode::Up {
                         app_state.help_list_state.select_previous();
                     } else if key.code == event::KeyCode::Down {
@@ -183,7 +179,7 @@ fn run(mut terminal: DefaultTerminal, mut app_state: &mut AppState) -> EyreResul
                     }
                 }
             }
-        }  
+        }
     }
     EyreOk(())
 }
@@ -340,8 +336,8 @@ fn render(frame: &mut Frame, app_state: &mut AppState) {
     let help_list_block = Block::bordered()
         .title(Line::from("Help List".white().bold()))
         .title_bottom(Line::from(vec![ 
-                "Focus ".white().bold(),
-                "<Ctrl+3> ".cyan().bold(),
+                "Scroll ".white().bold(),
+                "<Alt+Up>/<Alt+Down> ".cyan().bold(),
         ]))
         .border_type(BorderType::Rounded)
         .border_style(border_selection(3, &app_state))
@@ -495,7 +491,7 @@ fn convert_decomp_to_binary(mut app_state: &mut AppState) {
             }
         };
 
-        let method = parenthese_split[0].as_str();
+        let method = parenthese_split[0].as_str().to_uppercase();
 
         if line_index == app_state.decomp_text_area.cursor().0 {
             app_state.current_method = method.to_string();
