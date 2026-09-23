@@ -20,7 +20,7 @@ There are two windows you can *focus* on: *Decomp-esque BHV Script* (Ctrl+1) and
 To switch the conversion direction, press Ctrl+S (look at the top-right). You can only type in the BHV Script you're converting *from* 
 (so say I'm converting from decomp-esque to binary, I can only type in the decomp-esque window). To clear all code in a window, press Ctrl+Q; to copy it, press Ctrl+C.
 The *Help List* on the right controls what information gets displayed in the *Help* window. You can scroll the list using Alt+UpArrow or Alt+DownArrow.
-*Current Command* displays information about the... current command you're typing. The rest are command-specific.
+*Current Command* displays information about the current command you're typing. The rest are command-specific. You generally want to use Current Command while writing your script.
 
 ## Decomp-esque Syntax
 The general syntax is as follows:<br>
