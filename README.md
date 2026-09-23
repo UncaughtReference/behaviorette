@@ -15,7 +15,7 @@ On Windows 10 however, you need to do the following:
 Make sure to run the program at full windowed resolution, as some text may get cut off otherwise.
 
 ## UI Overview
-![til](./readme_assets/1.png)
+
 There are two windows you can *focus* on: *Decomp-esque BHV Script* (Ctrl+1) and *Binary BHV Script* (Ctrl+2). 
 To switch the conversion direction, press Ctrl+S (look at the top-right). You can only type in the BHV Script you're converting *from* 
 (so say I'm converting from decomp-esque to binary, I can only type in the decomp-esque window). To clear all code in a window, press Ctrl+Q; to copy it, press Ctrl+C.
