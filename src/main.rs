@@ -2,7 +2,7 @@ use color_eyre::eyre::{Ok as EyreOk, Result as EyreResult};
 use ratatui::{
     crossterm::event::{self, Event, KeyEventKind, KeyModifiers},
     prelude::*,
-    widgets::*,
+    widgets::{Block, Paragraph, List, BorderType, ListState, Padding},
     layout::{Constraint, Layout},
     style::{Stylize, Style},
     DefaultTerminal, Frame,
@@ -87,9 +87,9 @@ fn run(mut terminal: DefaultTerminal, mut app_state: &mut AppState) -> EyreResul
                     },
                     event::KeyCode::Char('q') => {
                         if key.modifiers == KeyModifiers::CONTROL {
-                            if app_state.block_focus == 1 {
+                            if app_state.block_focus == 1 && app_state.conversion_direction == 0 {
                                 app_state.decomp_text_area = TextArea::from(vec![""]); 
-                            } else if app_state.block_focus == 2 {
+                            } else if app_state.block_focus == 2 && app_state.conversion_direction == 1 {
                                 app_state.binary_text_area = TextArea::from(vec![""]); 
                             } 
                         }
@@ -173,7 +173,7 @@ fn run(mut terminal: DefaultTerminal, mut app_state: &mut AppState) -> EyreResul
                     if key.code == event::KeyCode::Up {
                         app_state.help_list_state.select_previous();
                     } else if key.code == event::KeyCode::Down {
-                        if app_state.help_list_state.selected().unwrap() < 57 {
+                        if app_state.help_list_state.selected().unwrap() < 59 {
                             app_state.help_list_state.select_next();
                         }
                     }
@@ -243,8 +243,22 @@ fn render(frame: &mut Frame, app_state: &mut AppState) {
 
 
     //-----------------------------------------------------------------
+    let decomp_title: &str;
+    match app_state.conversion_direction {
+        0 => {
+            decomp_title = "Decomp-esque BHV Script";
+        },
+        1 => {
+            decomp_title = "Decomp-esque BHV Script (Read-only)";
+        }
+        _ => {
+            decomp_title = "";
+        }
+    }
+    
+
     let decomp_block = Block::bordered()
-        .title(Line::from("Decomp-esque BHV Script".white().bold()))
+        .title(Line::from(decomp_title.white().bold()))
         .title_bottom(Line::from(vec![
                 "Focus ".white().bold(),
                 "<Ctrl+1> ".cyan().bold(),
@@ -269,8 +283,21 @@ fn render(frame: &mut Frame, app_state: &mut AppState) {
 
     
     //-----------------------------------------------------------------
+    let binary_title: &str;
+    match app_state.conversion_direction {
+        1 => {
+            binary_title = "Binary BHV Script";
+        },
+        0 => {
+            binary_title = "Binary BHV Script (Read-only)";
+        }
+        _ => {
+            binary_title = "";
+        }
+    }
+
     let binary_block = Block::bordered()
-        .title(Line::from("Binary BHV Script".white().bold()))
+        .title(Line::from(binary_title.white().bold()))
         .title_bottom(Line::from(vec![
                 "Focus ".white().bold(),
                 "<Ctrl+2> ".cyan().bold(),
@@ -449,6 +476,8 @@ fn render(frame: &mut Frame, app_state: &mut AppState) {
             "35 DISABLE_RENDERING".white(),
             "36 SET_INT_UNUSED".white(),
             "37 SPAWN_WATER_DROPLET".white(),
+            "Interaction Types 1".white(),
+            "Interaction Types 2".white(),
     ])
         .highlight_style(Style::new().light_magenta().bold())
         .highlight_symbol(">>")
@@ -501,55 +530,56 @@ fn convert_decomp_to_binary(mut app_state: &mut AppState) {
 
         if method == "BEGIN" {
             converted_line.push_str("00 ");
-            if argument == "OBJ_LIST_GENACTOR" { 
+            let argument_uppercase = argument.to_uppercase();
+            if argument_uppercase == "OBJ_LIST_GENACTOR" || argument_uppercase == "4" { 
                 converted_line.push_str("04 00 00");
                 binary_bhv.push(converted_line);
                 continue;
-            } else if argument == "OBJ_LIST_SURFACE" {
+            } else if argument_uppercase == "OBJ_LIST_SURFACE" || argument_uppercase == "9" {
                 converted_line.push_str("09 00 00");
                 binary_bhv.push(converted_line);
                 continue;
-            } else if argument == "OBJ_LIST_DESTRUCTIVE" {
+            } else if argument_uppercase == "OBJ_LIST_DESTRUCTIVE" || argument_uppercase == "2" {
                 converted_line.push_str("02 00 00");
                 binary_bhv.push(converted_line);
                 continue;
-            } else if argument == "OBJ_LIST_UNUSED_3" {
+            } else if argument_uppercase == "OBJ_LIST_UNUSED_3" || argument_uppercase == "3"  {
                 converted_line.push_str("03 00 00");
                 binary_bhv.push(converted_line);
                 continue;
-            } else if argument == "OBJ_LIST_PLAYER" {
+            } else if argument_uppercase == "OBJ_LIST_PLAYER" || argument_uppercase == "0" {
                 converted_line.push_str("00 00 00");
                 binary_bhv.push(converted_line);
                 continue;
-            } else if argument == "OBJ_LIST_PUSHABLE" {
+            } else if argument_uppercase == "OBJ_LIST_PUSHABLE" || argument_uppercase == "5" {
                 converted_line.push_str("05 00 00");
                 binary_bhv.push(converted_line);
                 continue;
-            } else if argument == "OBJ_LIST_LEVEL" {
+            } else if argument_uppercase == "OBJ_LIST_LEVEL" || argument_uppercase == "6" {
                 converted_line.push_str("06 00 00");
                 binary_bhv.push(converted_line);
                 continue;
-            } else if argument == "OBJ_LIST_UNUSED_7" {
+            } else if argument_uppercase == "OBJ_LIST_UNUSED_7" || argument_uppercase == "7" {
                 converted_line.push_str("07 00 00");
                 binary_bhv.push(converted_line);
                 continue;
-            } else if argument == "OBJ_LIST_DEFAULT" {
+            } else if argument_uppercase == "OBJ_LIST_DEFAULT" || argument_uppercase == "8" {
                 converted_line.push_str("08 00 00");
                 binary_bhv.push(converted_line);
                 continue;
-            } else if argument == "OBJ_LIST_UNUSED_1" {
+            } else if argument_uppercase == "OBJ_LIST_UNUSED_1" || argument_uppercase == "1" {
                 converted_line.push_str("01 00 00");
                 binary_bhv.push(converted_line);
                 continue;
-            } else if argument == "OBJ_LIST_POLELIKE" {
+            } else if argument_uppercase == "OBJ_LIST_POLELIKE" || argument_uppercase == "10" {
                 converted_line.push_str("0A 00 00");
                 binary_bhv.push(converted_line);
                 continue;
-            } else if argument == "OBJ_LIST_SPAWNER" {
+            } else if argument_uppercase == "OBJ_LIST_SPAWNER" || argument_uppercase == "11" {
                 converted_line.push_str("0B 00 00");
                 binary_bhv.push(converted_line);
                 continue;
-            } else if argument == "OBJ_LIST_UNIMPORTANT" {
+            } else if argument_uppercase == "OBJ_LIST_UNIMPORTANT" || argument_uppercase == "12" {
                 converted_line.push_str("0C 00 00");
                 binary_bhv.push(converted_line);
                 continue;
@@ -2729,10 +2759,11 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
     if current_selection == 0 {
         return Paragraph::new(vec![
             Line::from("Hello there!".light_cyan()),
-            Line::from("This program aims to make writing behavior scripts simpler and easier."),
+            Line::from("This program aims to make writing and reading behavior scripts simpler and easier."),
             Line::from("Read the README.md for more information.".white()),
             Line::from("Program by UncaughtReference".light_magenta().bold()),
-            Line::from("Testers: [temp]".light_yellow().bold()),
+            Line::from("Testers: ZennyTheZtarBones, lanayxy, ThatAussieGhost".light_yellow().bold()),
+            Line::from("Help descriptions taken from n64decomp/sm64 and the hack64 wiki.".light_green().bold()),
             Line::from("Have fun converting your behavior scripts!".white().bold()),
         ]); 
     } else if current_selection == 1 {
@@ -2849,7 +2880,33 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
         current_method_str = "SET_INT_UNUSED"; 
     } else if current_selection == 57 {
         current_method_str = "SPAWN_WATER_DROPLET"; 
-    } else {
+    } else if current_selection == 58 {
+        return Paragraph::new(vec![
+            Line::from("0x1 Mario can hang from it                              0x200 Nothing (can be punched)".bold()),
+            Line::from("0x2 Mario can pick it up                                0x400 Blows Mario away".bold()),
+            Line::from("0x4 Door                                                0x800 Warp door".bold()),
+            Line::from("0x8 Damages Mario (normal)                              0x1000 Star".bold()),
+            Line::from("0x10 Coin                                               0x2000 Warp hole".bold()),
+            Line::from("0x20 Cap                                                0x4000 Cannon".bold()),
+            Line::from("0x40 Pole                                               0x8000 Damages Mario (can be punched, bounced on)".bold()),
+            Line::from("0x80 Damages Mario (can be punched, bounced on)         0x10000 Replenishes health".bold()),
+            Line::from("0x100 Damages Mario (can be punched)                    0x20000 Bully".bold()),
+        ]);
+    } else if current_selection == 59 {
+        return Paragraph::new(vec![
+            Line::from("0x40000 Flame                                           0x8000000 Warp (Mario shrinks in)".bold()),
+            Line::from("0x80000 Koopa shell                                     0x10000000 Damages Mario".bold()),
+            Line::from("0x100000 Damages Mario (can be punched, bounced on)     0x20000000 Electrocutes Mario".bold()),
+            Line::from("0x200000 Damages Mario                                  0x40000000 Normal".bold()),
+            Line::from("0x400000 Damages Mario (can be punched and bounced on)".bold()),
+            Line::from("0x800000 Message".bold()),
+            Line::from("0x1000000 Makes Mario spin".bold()),
+            Line::from("0x2000000 Makes Mario fall?".bold()),
+            Line::from("0x4000000 Damages Mario".bold()),
+        ]);
+    }
+
+    else {
         return Paragraph::new(vec![Line::from("".light_red())]);
     }
 
@@ -2862,17 +2919,18 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("00 BEGIN".light_cyan()),
             Line::from("Marks start of behavior."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("BEGIN([Object List])".bold()),
-            Line::from("OBJ_LIST_PLAYER, OBJ_LIST_UNUSED_1, OBJ_LIST_DESTRUCTIVE, OBJ_LIST_UNUSED_3, OBJ_LIST_GENACTOR,".bold()),
-            Line::from("OBJ_LIST_PUSHABLE, OBJ_LIST_LEVEL, OBJ_LIST_UNUSED_7, OBJ_LIST_DEFAULT, OBJ_LIST_SURFACE,".bold()),
-            Line::from("OBJ_LIST_POLELIKE, OBJ_LIST_SPAWNER, OBJ_LIST_UNIMPORTANT".bold()),
+            Line::from("BEGIN(ObjectList)".bold()),
+            Line::from("OBJ_LIST_PLAYER (0), OBJ_LIST_UNUSED_1 (1), OBJ_LIST_DESTRUCTIVE (2), OBJ_LIST_UNUSED_3 (3),".bold()),
+            Line::from("OBJ_LIST_GENACTOR (4), OBJ_LIST_PUSHABLE (5), OBJ_LIST_LEVEL (6), OBJ_LIST_UNUSED_7 (7),".bold()),
+            Line::from("OBJ_LIST_DEFAULT (8), OBJ_LIST_SURFACE (9), OBJ_LIST_POLELIKE (10), OBJ_LIST_SPAWNER (11),".bold()),
+            Line::from("OBJ_LIST_UNIMPORTANT (12)".bold()),
         ]);
     } else if current_method_str == "DELAY" {
         return Paragraph::new(vec![
             Line::from("01 DELAY".light_cyan()),
             Line::from("Delays the behavior script for a certain number of frames."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("DELAY([AAAA])".bold()),
+            Line::from("DELAY(AAAA)".bold()),
             Line::from("A - Frames".bold()),
         ]);
     } else if current_method_str == "CALL" {
@@ -2880,7 +2938,7 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("02 CALL".light_cyan()),
             Line::from("Jumps to a new behavior command and stores the return address in the object's stack."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("CALL([AAAAAAAA])".bold()),
+            Line::from("CALL(AAAAAAAA)".bold()),
             Line::from("A - Segmented address of behavior to jump to".bold()),
         ]);
     } else if current_method_str == "RETURN" {
@@ -2895,7 +2953,7 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("04 GOTO".light_cyan()),
             Line::from("Jumps to a new behavior script without saving anything."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("GOTO([AAAAAAAA])".bold()),
+            Line::from("GOTO(AAAAAAAA)".bold()),
             Line::from("A - Segmented address of behavior to jump to".bold()),
         ]);
     } else if current_method_str == "BEGIN_REPEAT" {
@@ -2903,7 +2961,7 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("05 BEGIN_REPEAT".light_cyan()),
             Line::from("Marks the start of a loop that will repeat a certain number of times."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("BEGIN_REPEAT([AAAA])".bold()),
+            Line::from("BEGIN_REPEAT(AAAA)".bold()),
             Line::from("A - Number of times to loop".bold()),
         ]);
     } else if current_method_str == "END_REPEAT" {
@@ -2954,7 +3012,7 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("0C CALL_NATIVE".light_cyan()),
             Line::from("Calls an ASM function in RAM."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("CALL_NATIVE([AAAAAAAA])".bold()),
+            Line::from("CALL_NATIVE(AAAAAAAA)".bold()),
             Line::from("A - RAM address of ASM function to call".bold()),
         ]);
     } else if current_method_str == "ADD_FLOAT" {
@@ -2962,8 +3020,8 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("0D ADD_FLOAT".light_cyan()),
             Line::from("Used to offset the value of an address by a float."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("ADD_FLOAT([AA], [BBBB])".bold()),
-            Line::from("A - Address = A*4+88".bold()),
+            Line::from("ADD_FLOAT(AA, BBBB)".bold()),
+            Line::from("A - Address = A*4+0x88".bold()),
             Line::from("B - Float (s16)".bold()),
         ]);
     } else if current_method_str == "SET_FLOAT" {
@@ -2971,8 +3029,8 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("0E SET_FLOAT".light_cyan()),
             Line::from("Used to set the value of an address to a float."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("SET_FLOAT([AA], [BBBB])".bold()),
-            Line::from("A - Address = A*4+88".bold()),
+            Line::from("SET_FLOAT(AA, BBBB)".bold()),
+            Line::from("A - Address = A*4+0x88".bold()),
             Line::from("B - Float (s16)".bold()),
         ]);
     } else if current_method_str == "ADD_INT" {
@@ -2980,8 +3038,8 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("0F ADD_INT".light_cyan()),
             Line::from("Used to offset the value of an address by an integer."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("ADD_INT([AA], [BBBB])".bold()),
-            Line::from("A - Address = A*4+88".bold()),
+            Line::from("ADD_INT(AA, BBBB)".bold()),
+            Line::from("A - Address = A*4+0x88".bold()),
             Line::from("B - Integer (u16)".bold()),
         ]);
     } else if current_method_str == "SET_INT" {
@@ -2989,66 +3047,66 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("10 SET_INT".light_cyan()),
             Line::from("Used to set the value of an address to an integer."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("SET_INT([AA], [BBBB])".bold()),
-            Line::from("A - Address = A*4+88".bold()),
+            Line::from("SET_INT(AA, BBBB)".bold()),
+            Line::from("A - Address = A*4+0x88".bold()),
             Line::from("B - Integer (u16)".bold()),
         ]);
     } else if current_method_str == "OR_INT" {
         return Paragraph::new(vec![
             Line::from("11 OR_INT".light_cyan()),
-            Line::from("Sets bits designated by mask B at object offset A*4+88."),
+            Line::from("Sets bits designated by mask B at object offset A*4+0x88."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("OR_INT([AA], [BBBB])".bold()),
-            Line::from("A - Address = A*4+88".bold()),
+            Line::from("OR_INT(AA, BBBB)".bold()),
+            Line::from("A - Address = A*4+0x88".bold()),
             Line::from("B - Integer (u16)".bold()),
         ]);
     } else if current_method_str == "BIT_CLEAR" {
         return Paragraph::new(vec![
             Line::from("12 BIT_CLEAR".light_cyan()),
-            Line::from("Clears bits designated by mask B at object offset A*4+88."),
+            Line::from("Clears bits designated by mask B at object offset A*4+0x88."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("BIT_CLEAR([AA], [BBBB])".bold()),
-            Line::from("A - Address = A*4+88".bold()),
+            Line::from("BIT_CLEAR(AA, BBBB)".bold()),
+            Line::from("A - Address = A*4+0x88".bold()),
             Line::from("B - Integer (u16)".bold()),
         ]);
     } else if current_method_str == "SET_INT_RAND_RSHIFT" {
         return Paragraph::new(vec![
             Line::from("13 SET_INT_RAND_RSHIFT".light_cyan()),
             Line::from("Gets a random short, right shifts it by C and adds B to it,"),
-            Line::from("then sets A*4+88 to that value."),
+            Line::from("then sets A*4+0x88 to that value."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("SET_INT_RAND_RSHIFT([AA], [BBBB], [CCCC])".bold()),
-            Line::from("A - Address = A*4+88".bold()),
+            Line::from("SET_INT_RAND_RSHIFT(AA, BBBB, CCCC)".bold()),
+            Line::from("A - Address = A*4+0x88".bold()),
             Line::from("B - Integer to add (u16)".bold()),
             Line::from("C - Right shift (u16)".bold()),
         ]);
     } else if current_method_str == "SET_RANDOM_FLOAT" {
         return Paragraph::new(vec![
             Line::from("14 SET_RANDOM_FLOAT".light_cyan()),
-            Line::from("Sets A*4+88 to a random float in the given range?"),
+            Line::from("Sets A*4+0x88 to a random float in the given range?"),
             Line::from("Syntax:".light_magenta()),
-            Line::from("SET_RANDOM_FLOAT([AA], [BBBB], [CCCC])".bold()),
-            Line::from("A - Address = A*4+88".bold()),
+            Line::from("SET_RANDOM_FLOAT(AA, BBBB, CCCC)".bold()),
+            Line::from("A - Address = A*4+0x88".bold()),
             Line::from("B - Float (s16)".bold()),
             Line::from("C - Float (s16)".bold()),
         ]);
     } else if current_method_str == "SET_RANDOM_INT" {
         return Paragraph::new(vec![
             Line::from("15 SET_RANDOM_INT".light_cyan()),
-            Line::from("Sets A*4+88 to a random integer in the given range?"),
+            Line::from("Sets A*4+0x88 to a random integer in the given range?"),
             Line::from("Syntax:".light_magenta()),
-            Line::from("SET_RANDOM_INT([AA], [BBBB], [CCCC])".bold()),
-            Line::from("A - Address = A*4+88".bold()),
+            Line::from("SET_RANDOM_INT(AA, BBBB, CCCC)".bold()),
+            Line::from("A - Address = A*4+0x88".bold()),
             Line::from("B - Minimum (u16?)".bold()),
             Line::from("C - Range (u16?)".bold()),
         ]);
     } else if current_method_str == "ADD_RANDOM_FLOAT" {
         return Paragraph::new(vec![
             Line::from("16 ADD_RANDOM_FLOAT".light_cyan()),
-            Line::from("Adds a random float to A*4+88 in the given range?"),
+            Line::from("Adds a random float to A*4+0x88 in the given range?"),
             Line::from("Syntax:".light_magenta()),
-            Line::from("ADD_RANDOM_FLOAT([AA], [BBBB], [CCCC])".bold()),
-            Line::from("A - Address = A*4+88".bold()),
+            Line::from("ADD_RANDOM_FLOAT(AA, BBBB, CCCC)".bold()),
+            Line::from("A - Address = A*4+0x88".bold()),
             Line::from("B - Float (s16)".bold()),
             Line::from("C - Float (s16)".bold()),
         ]);
@@ -3056,10 +3114,10 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
         return Paragraph::new(vec![
             Line::from("17 ADD_INT_RAND_RSHIFT".light_cyan()),
             Line::from("Gets a random short, right shifts it the specified amount and adds min to it,"),
-            Line::from("then adds the value to A*4+88."),
+            Line::from("then adds the value to A*4+0x88."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("ADD_INT_RAND_RSHIFT([AA], [BBBB], [CCCC])".bold()),
-            Line::from("A - Address = A*4+88".bold()),
+            Line::from("ADD_INT_RAND_RSHIFT(AA, BBBB, CCCC)".bold()),
+            Line::from("A - Address = A*4+0x88".bold()),
             Line::from("B - Minimum (u16)".bold()),
             Line::from("C - Right Shift (u16)".bold()),
         ]);
@@ -3089,7 +3147,7 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("1B SET_MODEL".light_cyan()),
             Line::from("Sets the current model ID of the object."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("SET_MODEL([IIII])".bold()),
+            Line::from("SET_MODEL(IIII)".bold()),
             Line::from("A - Model ID".bold()),
         ]);
     } else if current_method_str == "SPAWN_CHILD" {
@@ -3097,7 +3155,7 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("1C SPAWN_CHILD".light_cyan()),
             Line::from("Spawns a child object with the specified model and behavior."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("SPAWN_CHILD([IIIIIIII], [AAAAAAAA])".bold()),
+            Line::from("SPAWN_CHILD(IIIIIIII, AAAAAAAA)".bold()),
             Line::from("I - Model ID".bold()),
             Line::from("A - Segmented address of child object behavior".bold()),
         ]);
@@ -3120,20 +3178,20 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("1F SUM_FLOAT".light_cyan()),
             Line::from("Sets the destination float field to the sum of the values of the given float fields."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("SUM_FLOAT([AA], [BB], [CC])".bold()),
-            Line::from("A - Destination Address = A*4+88".bold()),
-            Line::from("B - Address 1 = B*4+88".bold()),
-            Line::from("C - Address 2 = C*4+88".bold()),
+            Line::from("SUM_FLOAT(AA, BB, CC)".bold()),
+            Line::from("A - Destination Address = A*4+0x88".bold()),
+            Line::from("B - Address 1 = B*4+0x88".bold()),
+            Line::from("C - Address 2 = C*4+0x88".bold()),
         ]);
     } else if current_method_str == "SUM_INT" {
         return Paragraph::new(vec![
             Line::from("20 SUM_INT".light_cyan()),
             Line::from("Sets the destination integer field to the sum of the values of the given integer fields (unused)."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("SUM_INT([AA], [BB], [CC])".bold()),
-            Line::from("A - Destination Address = A*4+88".bold()),
-            Line::from("B - Address 1 = B*4+88".bold()),
-            Line::from("C - Address 2 = C*4+88".bold()),
+            Line::from("SUM_INT(AA, BB, CC)".bold()),
+            Line::from("A - Destination Address = A*4+0x88".bold()),
+            Line::from("B - Address 1 = B*4+0x88".bold()),
+            Line::from("C - Address 2 = C*4+0x88".bold()),
         ]);
     } else if current_method_str == "BILLBOARD" {
         return Paragraph::new(vec![
@@ -3154,7 +3212,7 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("23 SET_HITBOX".light_cyan()),
             Line::from("Sets the size of the object's cylindrical hitbox."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("SET_HITBOX([RRRR], [HHHH])".bold()),
+            Line::from("SET_HITBOX(RRRR, HHHH)".bold()),
             Line::from("R - Radius of collision cylinder".bold()),
             Line::from("H - Height of collision cylinder".bold()),
         ]);
@@ -3163,22 +3221,22 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("24 CMD_NOP_4".light_cyan()),
             Line::from("No operation (unused)."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("CMD_NOP_4([AA], [BBBB])".bold()),
+            Line::from("CMD_NOP_4(AA, BBBB)".bold()),
         ]);
     } else if current_method_str == "DELAY_VAR" {
         return Paragraph::new(vec![
             Line::from("25 DELAY_VAR".light_cyan()),
             Line::from("Delays the behavior script for the number of frames given by the value of the specified field."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("DELAY_VAR([AA])".bold()),
-            Line::from("A - Address = A*4+88".bold()),
+            Line::from("DELAY_VAR(AA)".bold()),
+            Line::from("A - Address = A*4+0x88".bold()),
         ]);
     } else if current_method_str == "BEGIN_REPEAT_UNUSED" {
         return Paragraph::new(vec![
             Line::from("26 BEGIN_REPEAT_UNUSED".light_cyan()),
             Line::from("Marks the start of a loop that will repeat a certain number of times."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("BEGIN_REPEAT_UNUSED([AA])".bold()),
+            Line::from("BEGIN_REPEAT_UNUSED(AA)".bold()),
             Line::from("A - Loops (u8)".bold()),
         ]);
     } else if current_method_str == "LOAD_ANIMATIONS" {
@@ -3186,16 +3244,16 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("27 LOAD_ANIMATIONS".light_cyan()),
             Line::from("Loads the animations for the object. <field> is always set to oAnimations."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("LOAD_ANIMATIONS([AA], [BBBBBBBB])".bold()),
-            Line::from("A - Address = A*4+88".bold()),
-            Line::from("B - Word to store at A*4+88".bold()),
+            Line::from("LOAD_ANIMATIONS(AA, BBBBBBBB)".bold()),
+            Line::from("A - Address = A*4+0x88".bold()),
+            Line::from("B - Word to store at A*4+0x88".bold()),
         ]);
     } else if current_method_str == "ANIMATE" {
         return Paragraph::new(vec![
             Line::from("28 ANIMATE".light_cyan()),
             Line::from("Marks the start of a loop that will repeat a certain number of times."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("ANIMATE([AA])".bold()),
+            Line::from("ANIMATE(AA)".bold()),
             Line::from("A - Animation index (*4)".bold()),
         ]);
     } else if current_method_str == "SPAWN_CHILD_WITH_PARAM" {
@@ -3203,7 +3261,7 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("29 SPAWN_CHILD_WITH_PARAM".light_cyan()),
             Line::from("Spawns a child object with the specified model and behavior, plus a behavior param."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("SPAWN_CHILD_WITH_PARAM([AAAA], [BBBBBBBB], [CCCCCCCC])".bold()),
+            Line::from("SPAWN_CHILD_WITH_PARAM(AAAA, BBBBBBBB, CCCCCCCC)".bold()),
             Line::from("A - BParam for child object".bold()),
             Line::from("B - Model ID".bold()),
             Line::from("C - Segmented address of behavior".bold()),
@@ -3213,7 +3271,7 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("2A LOAD_COLLISION_DATA".light_cyan()),
             Line::from("Loads collision data for the object."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("LOAD_COLLISION_DATA([AAAAAAAA])".bold()),
+            Line::from("LOAD_COLLISION_DATA(AAAAAAAA)".bold()),
             Line::from("A - Segmented address of collision pointer".bold()),
         ]);
     } else if current_method_str == "SET_HITBOX_WITH_OFFSET" {
@@ -3221,7 +3279,7 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("2B SET_HITBOX_WITH_OFFSET".light_cyan()),
             Line::from("Sets the size of the object's cylindrical hitbox, and applies a downwards offset."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("SET_HITBOX_WITH_OFFSET([RRRR], [HHHH], [AAAA])".bold()),
+            Line::from("SET_HITBOX_WITH_OFFSET(RRRR, HHHH, AAAA)".bold()),
             Line::from("R - Radius of collision cylinder".bold()),
             Line::from("H - Height of collision cylinder".bold()),
             Line::from("A - Downwards offset".bold()),
@@ -3231,7 +3289,7 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("2C SPAWN_OBJ".light_cyan()),
             Line::from("Spawns a new object with the specified model and behavior."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("SPAWN_OBJ([IIIIIIII], [AAAAAAAA])".bold()),
+            Line::from("SPAWN_OBJ(IIIIIIII, AAAAAAAA)".bold()),
             Line::from("I - Model ID".bold()),
             Line::from("A - Segmented address of behavior".bold()),
         ]);
@@ -3247,7 +3305,7 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("2E SET_HURTBOX".light_cyan()),
             Line::from("Sets the size of the object's cylindrical hurtbox."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("SET_HURTBOX([RRRR], [HHHH])".bold()),
+            Line::from("SET_HURTBOX(RRRR, HHHH)".bold()),
             Line::from("R - Radius of collision cylinder".bold()),
             Line::from("H - Height of collision cylinder".bold()),
         ]);
@@ -3256,16 +3314,15 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("2F SET_INTERACT_TYPE".light_cyan()),
             Line::from("Sets the object's interaction type."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("SET_INTERACT_TYPE([AAAAAAAA])".bold()),
-            Line::from("A - Interaction type".bold()),
-            Line::from("https://hack64.net/wiki/doku.php?id=super_mario_64:behavior_commands#fset_interaction".bold()),
+            Line::from("SET_INTERACT_TYPE(AAAAAAAA)".bold()),
+            Line::from("A - Interaction type (see Help List -> Interaction Types)".bold()),
         ]);
     } else if current_method_str == "SET_OBJ_PHYSICS" {
         return Paragraph::new(vec![
             Line::from("30 SET_OBJ_PHYSICS".light_cyan()),
             Line::from("Sets the object's interaction type."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("SET_OBJ_PHYSICS([AAAA], [BBBB], [CCCC], [DDDD], [EEEE], [FFFF], [GGGG], [HHHH])".bold()),
+            Line::from("SET_OBJ_PHYSICS(AAAA, BBBB, CCCC, DDDD, EEEE, FFFF, GGGG, HHHH)".bold()),
             Line::from("A - Wall hitbox radius      E - Friction".bold()),
             Line::from("B - Gravity                 F - Buoyancy".bold()),
             Line::from("C - Bounce                  G - Ignored".bold()),
@@ -3276,7 +3333,7 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("31 SET_INTERACT_SUBTYPE".light_cyan()),
             Line::from("Sets the object's interaction subtype (unused)."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("SET_INTERACT_SUBTYPE([AAAAAAAA])".bold()),
+            Line::from("SET_INTERACT_SUBTYPE(AAAAAAAA)".bold()),
             Line::from("A - Interaction subtype".bold()),
         ]);
     } else if current_method_str == "SCALE" {
@@ -3284,7 +3341,7 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("32 SCALE".light_cyan()),
             Line::from("Sets the object's scale to the specified percentage."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("SCALE([AAAA])".bold()),
+            Line::from("SCALE(AAAA)".bold()),
             Line::from("A - Scale value (percent)".bold()),
         ]);
     } else if current_method_str == "PARENT_BIT_CLEAR" {
@@ -3292,8 +3349,8 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("33 PARENT_BIT_CLEAR".light_cyan()),
             Line::from("Performs a bit clear on the object's parent's field with the specified value."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("PARENT_BIT_CLEAR([AA], [BBBBBBBB])".bold()),
-            Line::from("A - Address = A*4+88".bold()),
+            Line::from("PARENT_BIT_CLEAR(AA, BBBBBBBB)".bold()),
+            Line::from("A - Address = A*4+0x88".bold()),
             Line::from("B - Bit values to clear".bold()),
         ]);
     } else if current_method_str == "ANIMATE_TEXTURE" {
@@ -3301,8 +3358,8 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("34 ANIMATE_TEXTURE".light_cyan()),
             Line::from("Animates an object using texture animation. <field> is always set to oAnimState."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("ANIMATE_TEXTURE([AA], [BBBB])".bold()),
-            Line::from("A - Address = A*4+88".bold()),
+            Line::from("ANIMATE_TEXTURE(AA, BBBB)".bold()),
+            Line::from("A - Address = A*4+0x88".bold()),
             Line::from("B - Rate; divide value at 0x8032D5D4 with B".bold()),
         ]);
     } else if current_method_str == "DISABLE_RENDERING" {
@@ -3317,8 +3374,8 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("36 SET_INT_UNUSED".light_cyan()),
             Line::from("Sets the specified field to an integer (unused)."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("SET_INT_UNUSED([AA], [BBBB])".bold()),
-            Line::from("A - Address = A*4+88".bold()),
+            Line::from("SET_INT_UNUSED(AA, BBBB)".bold()),
+            Line::from("A - Address = A*4+0x88".bold()),
             Line::from("B - Value (u16)".bold()),
         ]);
     } else if current_method_str == "SPAWN_WATER_DROPLET" {
@@ -3326,7 +3383,7 @@ fn get_help_paragraph<'a>(app_state: &'a AppState<'a>) -> Paragraph<'a> {
             Line::from("37 SPAWN_WATER_DROPLET".light_cyan()),
             Line::from("Spawns a water droplet with the given parameters."),
             Line::from("Syntax:".light_magenta()),
-            Line::from("SPAWN_WATER_DROPLET([AA], [BBBB])".bold()),
+            Line::from("SPAWN_WATER_DROPLET(AA, BBBB)".bold()),
             Line::from("A - Spawn function address/droplet params?".bold()),
         ]);
     }
