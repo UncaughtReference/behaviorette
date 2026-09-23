@@ -5,7 +5,7 @@ Converter between a decomp-esque style and pure hex for Super Mario 64 behavior 
 ## Installation
 Download and extract the zip file for the latest version in **Releases**.
 **behaviorette** is intended to be run in Windows Terminal. On Windows 11 you can just double-click *behaviorette.exe*. 
-On older Windows versions however, you need to do the following:
+On Windows 10 however, you need to do the following:
 
 1. Download and install Windows Terminal from the Microsoft Store
 2. In File Explorer, open the folder you unzipped **behaviorette** into
