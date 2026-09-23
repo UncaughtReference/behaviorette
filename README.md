@@ -11,6 +11,8 @@ On Windows 10 however, you need to do the following:
 2. In File Explorer, open the folder you unzipped **behaviorette** into
 3. Right click on some empty space, and click **Open in Terminal**
 4. Type *behaviorette.exe* and press Enter
+<br>
+Make sure to run the program at full windowed resolution, as some text may get cut off otherwise.
 
 ## UI Overview
 ![til](./readme_assets/1.png)
