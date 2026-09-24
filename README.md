@@ -15,18 +15,18 @@ On Windows 10 however, you need to do the following:
 Make sure to run the program at full windowed resolution, as some text may get cut off otherwise.
 
 ## UI Overview
-![til](./readme_assets/overview.png)
+![til](./readme_assets/overview1.png)
 There are two windows you can *focus* on: *Decomp-esque BHV Script* (Ctrl+1) and *Binary BHV Script* (Ctrl+2). 
 To switch the conversion direction, press Ctrl+S (look at the top-right). You can only type in the BHV Script you're converting *from* 
 (so say I'm converting from decomp-esque to binary, I can only type in the decomp-esque window). To clear all code in a window, press Ctrl+Q; to copy it, press Ctrl+C.
 The *Help List* on the right controls what information gets displayed in the *Help* window. You can scroll the list using Alt+UpArrow or Alt+DownArrow.
-*Current Command* displays information about the current command you're typing. The rest are command-specific. You generally want to use Current Command while writing your script.
+*Current Command* displays information about the current command you're typing. The rest are command-specific. You generally want to use Current Command while writing your script. Some behavior commands require you to input an offset to the object struct, but only in a single byte (this will be further explained later). This is where *Offset To Single Byte Address* comes into play. Input your desired offset, and you'll get a byte that will work in behavior commands! The `OR_INT` command is used mainly to set object flags. These can be edited in the *Object Flags Editor*.
 
 ## Decomp-esque Syntax
 The general syntax is as follows:<br>
 ```COMMAND(0xVALUE1, 0xVALUE2, etc.)```
 <br>Example command:<br>
-```OR_INT(0x01, 0x20C9)```
+```OR_INT(0x01, 0x09E0)```
 <br>Help for individual commands is displayed in the help window.<br><br>
 
 ## General Behavior Script Syntax
