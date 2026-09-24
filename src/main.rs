@@ -1,3 +1,5 @@
+use std::i64;
+
 use color_eyre::eyre::{Ok as EyreOk, Result as EyreResult};
 use ratatui::{
     crossterm::event::{self, Event, KeyEventKind, KeyModifiers},
@@ -8,7 +10,7 @@ use ratatui::{
     DefaultTerminal, Frame,
 };
 
-use ratatui_textarea::TextArea;
+use ratatui_textarea::{TextArea, CursorMove};
 
 use cli_clipboard::{ClipboardContext, ClipboardProvider};
 
@@ -19,6 +21,10 @@ struct AppState<'a> {
     conversion_direction:           u8,
     current_method:                 String,
     help_list_state:                ListState,
+    single_byte_address:            String,
+    atimes4_text_area:              TextArea<'a>,
+    object_flags:                   String,
+    object_flags_text_area:         TextArea<'a>
 }
 
 macro_rules! split_to_vec {
@@ -40,6 +46,10 @@ fn main() -> EyreResult<()>
         conversion_direction:       0,
         current_method:             "".to_string(),
         help_list_state:            ListState::default(),
+        single_byte_address:        "".to_string(),
+        atimes4_text_area:          TextArea::default(),
+        object_flags:               "".to_string(),
+        object_flags_text_area:     TextArea::from(vec!["0000000000000000"]),
     };
     
     app_state.help_list_state.select_next(); 
@@ -70,6 +80,16 @@ fn run(mut terminal: DefaultTerminal, mut app_state: &mut AppState) -> EyreResul
                             app_state.block_focus = 2;
                         }
                     },
+                    event::KeyCode::Char('3') => {
+                        if key.modifiers == KeyModifiers::CONTROL {
+                            app_state.block_focus = 3;
+                        }
+                    },
+                    event::KeyCode::Char('4') => {
+                        if key.modifiers == KeyModifiers::CONTROL {
+                            app_state.block_focus = 4;
+                        }
+                    },
                     event::KeyCode::Char('s') => {
                         if key.modifiers == KeyModifiers::CONTROL {
                             match app_state.conversion_direction {
@@ -91,7 +111,9 @@ fn run(mut terminal: DefaultTerminal, mut app_state: &mut AppState) -> EyreResul
                                 app_state.decomp_text_area = TextArea::from(vec![""]); 
                             } else if app_state.block_focus == 2 && app_state.conversion_direction == 1 {
                                 app_state.binary_text_area = TextArea::from(vec![""]); 
-                            } 
+                            } else if app_state.block_focus == 4 {
+                                app_state.object_flags_text_area = TextArea::from(vec!["0000000000000000"]);
+                            }
                         }
                     },
                     event::KeyCode::Char('p') => {
@@ -133,9 +155,19 @@ fn run(mut terminal: DefaultTerminal, mut app_state: &mut AppState) -> EyreResul
                                     binary_content.push_str("\n");
                                 }
                                 let _ = clipboard.set_contents(binary_content.to_owned());
-                            } 
+                            } else if app_state.block_focus == 4 {
+                                let mut clipboard = ClipboardContext::new().unwrap();                                
+                                let _ = clipboard.set_contents(calculate_flags(&app_state, true).to_owned());
+                            }
                         }
                     },
+                    event::KeyCode::PageUp => {
+                        app_state.help_list_state.select(Some(0));
+                    },
+                    event::KeyCode::PageDown => {
+                        app_state.help_list_state.select(Some(59));
+                    },
+
 
                     event::KeyCode::Esc => {
                         app_state.block_focus = 0; 
@@ -149,8 +181,10 @@ fn run(mut terminal: DefaultTerminal, mut app_state: &mut AppState) -> EyreResul
             }
             if app_state.block_focus == 1 {
                 if app_state.conversion_direction == 0 { 
-                    app_state.decomp_text_area.input(key);
-                    convert_decomp_to_binary(&mut app_state);
+                    if key.code != event::KeyCode::PageUp && key.code != event::KeyCode::PageDown { 
+                        app_state.decomp_text_area.input(key); 
+                        convert_decomp_to_binary(&mut app_state);
+                    }
                 }
                 else {
                     if key.code == event::KeyCode::Up || key.code == event::KeyCode::Down || key.code == event::KeyCode::Left || key.code == event::KeyCode::Right {
@@ -159,15 +193,32 @@ fn run(mut terminal: DefaultTerminal, mut app_state: &mut AppState) -> EyreResul
                 }
             } else if app_state.block_focus == 2 {
                 if app_state.conversion_direction == 1 {
-                    app_state.binary_text_area.input(key);
-                    convert_binary_to_decomp(&mut app_state);
-                    get_current_method(&mut app_state);
+                    if key.code != event::KeyCode::PageUp && key.code != event::KeyCode::PageDown { 
+                        app_state.binary_text_area.input(key);
+                        convert_binary_to_decomp(&mut app_state);
+                        get_current_method(&mut app_state);
+                    }
                 } else {
                     if key.code == event::KeyCode::Up || key.code == event::KeyCode::Down || key.code == event::KeyCode::Left || key.code == event::KeyCode::Right {
                         app_state.binary_text_area.input(key);
                     }
                 }
-            } 
+            } else if app_state.block_focus == 3 {
+                if key.code != event::KeyCode::Enter && !(key.code == event::KeyCode::Char('m') && key.modifiers == KeyModifiers::CONTROL) {
+                    app_state.atimes4_text_area.input(key);
+                    update_atimes4(&mut app_state);
+                }
+            } else if app_state.block_focus == 4 {
+                if key.code == event::KeyCode::Right && app_state.object_flags_text_area.cursor().1 < 15 {
+                    app_state.object_flags_text_area.input(key);
+                } else if key.code == event::KeyCode::Left {
+                    app_state.object_flags_text_area.input(key);
+                } else if key.code == event::KeyCode::Char('0') {
+                    clear_flag(&mut app_state);
+                } else if key.code == event::KeyCode::Char('1') {
+                    set_flag(&mut app_state);
+                }
+            }
             if key.kind == KeyEventKind::Press {
                 if key.modifiers == KeyModifiers::ALT {
                     if key.code == event::KeyCode::Up {
@@ -353,6 +404,8 @@ fn render(frame: &mut Frame, app_state: &mut AppState) {
         .constraints(vec![
         Constraint::Length(1),
         Constraint::Length(1),
+        Constraint::Percentage(65),
+        Constraint::Length(3),
         Constraint::Fill(1),
         ])
         .split(right_block_inner_area);
@@ -364,10 +417,12 @@ fn render(frame: &mut Frame, app_state: &mut AppState) {
         .title(Line::from("Help List".white().bold()))
         .title_bottom(Line::from(vec![ 
                 "Scroll ".white().bold(),
-                "<Alt+Up>/<Alt+Down> ".cyan().bold(),
+                "<Alt+Up/Down> ".cyan().bold(),
+                "Jump ".white().bold(),
+                "<PageUp/PageDown> ".cyan().bold(),
         ]))
         .border_type(BorderType::Rounded)
-        .border_style(border_selection(3, &app_state))
+        .border_style(border_selection(99, &app_state))
         .padding(Padding::uniform(0));
 
     let help_list_block_inner_area = help_list_block.inner(right_layout[2]);
@@ -378,6 +433,58 @@ fn render(frame: &mut Frame, app_state: &mut AppState) {
         Constraint::Percentage(100),
         ])
         .split(help_list_block_inner_area);
+    //-----------------------------------------------------------------
+    
+
+    //-----------------------------------------------------------------
+    let atimes4_block = Block::bordered()
+        .title(Line::from("Offset To Single Byte Address".white().bold()))
+        .title_bottom(Line::from(vec![ 
+                "Focus ".white().bold(),
+                "<Ctrl+3> ".cyan().bold(),
+        ]))
+        .border_type(BorderType::Rounded)
+        .border_style(border_selection(3, &app_state))
+        .padding(Padding::uniform(0));
+
+    let atimes4_block_inner_area = atimes4_block.inner(right_layout[3]);
+
+    let atimes4_layout = Layout::horizontal([Constraint::Fill(1)])
+        .margin(0)
+        .constraints(vec![
+        Constraint::Length(4),
+        Constraint::Fill(1),
+        ])
+        .split(atimes4_block_inner_area);
+    //-----------------------------------------------------------------
+    
+
+    //-----------------------------------------------------------------
+    let flags_block = Block::bordered()
+        .title(Line::from("Object Flags Editor".white().bold()))
+        .title_bottom(Line::from(vec![ 
+                "Focus ".white().bold(),
+                "<Ctrl+4> ".cyan().bold(),
+                "Clear ".white().bold(),
+                "<Ctrl+Q> ".cyan().bold(),
+                "Copy ".white().bold(),
+                "<Ctrl+C> ".cyan().bold(),
+        ]))
+        .border_type(BorderType::Rounded)
+        .border_style(border_selection(4, &app_state))
+        .padding(Padding::uniform(0));
+
+    let flags_block_inner_area = flags_block.inner(right_layout[4]);
+
+    let flags_layout = Layout::vertical([Constraint::Fill(1)])
+        .margin(0)
+        .constraints(vec![
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Fill(1),
+        ])
+        .split(flags_block_inner_area);
     //-----------------------------------------------------------------
 
     
@@ -482,6 +589,17 @@ fn render(frame: &mut Frame, app_state: &mut AppState) {
         .highlight_style(Style::new().light_magenta().bold())
         .highlight_symbol(">>")
         .repeat_highlight_symbol(true), help_list_layout[0], &mut app_state.help_list_state);
+    frame.render_widget(atimes4_block, right_layout[3]);
+    frame.render_widget(&app_state.atimes4_text_area, atimes4_layout[0]);
+    frame.render_widget(Line::from(app_state.single_byte_address.as_str().white().bold()), atimes4_layout[1]);
+    frame.render_widget(flags_block, right_layout[4]);
+    frame.render_widget(&app_state.object_flags_text_area, flags_layout[0]);
+    frame.render_widget(Line::from(get_flag_name(&app_state).as_str().cyan().bold()), flags_layout[1]);
+    frame.render_widget(Line::from(calculate_flags(&app_state, false).as_str().light_green().bold()), flags_layout[2]);
+    frame.render_widget(Paragraph::new(vec![
+            Line::from("Use the Left and Right arrow keys to move."),
+            Line::from("Press 1 to set a flag, and 0 to unset it."),
+    ]), flags_layout[3]);
 }
 
 fn border_selection(border_id: usize, app_state: &AppState) -> Style {
@@ -1901,7 +2019,16 @@ fn parse_two_byte_argument(argument: &str, opcode: &str) -> Result<String, Strin
             }
             converted_line.push_str(opcode);
             let mut final_binary_hex_value = "".to_string();
-            let hex_value_split: Vec<String> = split_to_vec!(argument.split("x"));
+            let mut hex_value_split: Vec<String> = split_to_vec!(argument.split("x"));
+            hex_value_split = vec![hex_value_split[0].clone(), hex_value_split[1].replace(",", "")];
+
+            match i64::from_str_radix(&hex_value_split[1], 16) {
+                Ok(_) => { },
+                Err(_) => {
+                    return Err("Error converting line: invalid hex value".to_string());
+                },
+            }
+
             let char_count = hex_value_split[1].chars().count();
             match char_count {
                 1 => {
@@ -1961,7 +2088,16 @@ fn parse_one_byte_argument(argument: &str, opcode: &str) -> Result<String, Strin
             }
             converted_line.push_str(opcode);
             let mut final_binary_hex_value = "".to_string();
-            let hex_value_split: Vec<String> = split_to_vec!(argument.split("x"));
+            let mut hex_value_split: Vec<String> = split_to_vec!(argument.split("x"));
+            hex_value_split = vec![hex_value_split[0].clone(), hex_value_split[1].replace(",", "")];
+
+            match i64::from_str_radix(&hex_value_split[1], 16) {
+                Ok(_) => { },
+                Err(_) => {
+                    return Err("Error converting line: invalid hex value".to_string());
+                },
+            }
+
             let char_count = hex_value_split[1].chars().count();
             match char_count {
                 1 => {
@@ -2006,7 +2142,16 @@ fn parse_four_byte_argument(argument: &str, opcode: &str) -> Result<String, Stri
             }
             converted_line.push_str(opcode);
             let mut final_binary_hex_value = "".to_string();
-            let hex_value_split: Vec<String> = split_to_vec!(argument.split("x"));
+            let mut hex_value_split: Vec<String> = split_to_vec!(argument.split("x"));
+            hex_value_split = vec![hex_value_split[0].clone(), hex_value_split[1].replace(",", "")];
+
+            match i64::from_str_radix(&hex_value_split[1], 16) {
+                Ok(_) => { },
+                Err(_) => {
+                    return Err("Error converting line: invalid hex value".to_string());
+                },
+            }
+
             let char_count = hex_value_split[1].chars().count();
             match char_count {
                 1 => {
@@ -2101,8 +2246,21 @@ fn convert_binary_to_decomp(mut app_state: &mut AppState) {
             continue;
         }
 
-        let line_space_split: Vec<String> = split_to_vec!(line.split(" "));
+        let mut line_space_split: Vec<String> = split_to_vec!(line.to_uppercase().split(" "));
         let mut converted_line = "".to_string();
+
+        for (i, line_space_splitee) in line_space_split.clone().into_iter().enumerate() {
+            if line_space_splitee == " ".to_string() {
+                line_space_split.remove(i);
+            } else if line_space_splitee.chars().count() != 2 {
+                line_space_split.remove(i);
+            } 
+        }
+
+        if line_space_split.len() == 0 {
+            decomp_bhv.push("Error converting line: invalid command".to_string());
+            continue;
+        }
         
         if line_space_split[0] == "00" {
             if line_space_split.len() == 4 {
@@ -3411,5 +3569,106 @@ fn get_current_method(mut app_state: &mut AppState) {
             app_state.current_method = method.to_string();
         }
         line_index += 1;
+    }
+}
+
+fn update_atimes4(mut app_state: &mut AppState) {
+    let mut first_line = String::new();
+    for line in app_state.atimes4_text_area.lines() {
+        first_line = line.trim_start_matches("0x").trim_start_matches("0X").to_string();
+        break;
+    }
+    if first_line == "".to_string() {
+        app_state.single_byte_address = "".to_string();
+        return;
+    }
+    let first_line_int = match i64::from_str_radix(&first_line, 16) {
+        Ok(val) => val,
+        Err(_) => { 
+            app_state.single_byte_address = "Error: couldn't convert to hex".to_string();
+            return;
+        }
+    };
+    let result = (first_line_int - 136) / 4;
+    let result_hex = format!("{:x}", &result);
+    let mut result_string = "- 0x88 / 4 = 0x".to_string();
+    let result_hex_length = result_hex.chars().count();
+    if result_hex_length == 1 {
+        result_string.push_str("0");
+        result_string.push_str(&result_hex);
+        app_state.single_byte_address = result_string;
+    } else if result_hex_length == 2 {
+        result_string.push_str(&result_hex);
+        app_state.single_byte_address = result_string;
+    } else {
+        app_state.single_byte_address = "Error: couldn't convert the offset".to_string();
+    }
+}
+
+fn clear_flag(mut app_state: &mut AppState) {
+    let mut object_flags = String::new();
+    for line in app_state.object_flags_text_area.lines() {
+        object_flags = line.to_string();
+        break;
+    }
+    let cursor_x = app_state.object_flags_text_area.cursor().1;
+    object_flags.replace_range(cursor_x..cursor_x+1, "0");
+    app_state.object_flags_text_area = TextArea::from(vec![&object_flags]);
+    app_state.object_flags_text_area.move_cursor(CursorMove::Jump(0, cursor_x as u16));
+}
+
+fn set_flag(mut app_state: &mut AppState) {
+    let mut object_flags = String::new();
+    for line in app_state.object_flags_text_area.lines() {
+        object_flags = line.to_string();
+        break;
+    }
+    let cursor_x = app_state.object_flags_text_area.cursor().1;
+    object_flags.replace_range(cursor_x..cursor_x+1, "1");
+    app_state.object_flags_text_area = TextArea::from(vec![&object_flags]);
+    app_state.object_flags_text_area.move_cursor(CursorMove::Jump(0, cursor_x as u16));
+}
+
+fn calculate_flags(app_state: &AppState, copy_format: bool) -> String {
+    let mut object_flags = String::new();
+    for line in app_state.object_flags_text_area.lines() {
+        object_flags = line.to_string();
+        break;
+    }
+    let result = match i64::from_str_radix(&object_flags, 2) {
+        Ok(val) => val,
+        Err(_) => {
+            return "Error: couldn't convert binary".to_string();
+        }
+    };
+    let result_hex = format!("{:x}", &result).to_uppercase();
+    let mut result_string;
+    if !copy_format { result_string = "Command: OR_INT(0x1, 0x".to_string(); }
+    else            { result_string = "OR_INT(0x1, 0x".to_string(); }
+    result_string.push_str(&result_hex);
+    result_string.push_str(")");
+    return result_string;
+}
+
+fn get_flag_name(app_state: &AppState) -> String {
+    let cursor_x = app_state.object_flags_text_area.cursor().1;
+    match cursor_x {
+        0 => { "OBJ_FLAG_8000".to_string() },
+        1 => { "OBJ_FLAG_PERSISTENT_RESPAWN".to_string() },
+        2 => { "OBJ_FLAG_COMPUTE_ANGLE_TO_MARIO".to_string() },
+        3 => { "OBJ_FLAG_1000".to_string() },
+        4 => { "OBJ_FLAG_SET_THROW_MATRIX_FROM_TRANSFORM".to_string() },
+        5 => { "OBJ_FLAG_HOLDABLE".to_string() },
+        6 => { "OBJ_FLAG_TRANSFORM_RELATIVE_TO_PARENT".to_string() },
+        7 => { "OBJ_FLAG_0100".to_string() },
+        8 => { "OBJ_FLAG_ACTIVE_FROM_AFAR".to_string() },
+        9 => { "OBJ_FLAG_COMPUTE_DIST_TO_MARIO".to_string() },
+        10 => { "OBJ_FLAG_0020".to_string() },
+        11 => { "OBJ_FLAG_SET_FACE_ANGLE_TO_MOVE_ANGLE".to_string() },
+        12 => { "OBJ_FLAG_SET_FACE_YAW_TO_MOVE_YAW".to_string() },
+        13 => { "OBJ_FLAG_MOVE_Y_WITH_TERMINAL_VEL".to_string() },
+        14 => { "OBJ_FLAG_MOVE_XZ_USING_FVEL".to_string() },
+        15 => { "OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE".to_string() },
+        _ => { "Error: index out of bounds".to_string() }
     }
 }
